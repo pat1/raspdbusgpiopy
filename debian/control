@@ -1,0 +1,13 @@
+Source: dbusgpio
+Section: sound
+Priority: extra
+Maintainer: Paolo Patruno <p.patruno@iperbole.bologna.it>
+Build-Depends: debhelper (>= 7.0.50)
+Build-Depends-Indep: python, python-support, python-setuptools, python-configobj, gettext
+Standards-Version: 3.8.1
+Homepage: http://raspdbusgpiopy.sourceforge.net/
+
+Package: dbusgpio
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python,  python-configobj, python-dbus
+Description: This daemon enable application to interact with Raspberry GPIO with DBUS standard API
