@@ -3,41 +3,33 @@
 # GPL. (C) 2013 Paolo Patruno.
 
 # Authors: Paolo Patruno <p.patruno@iperbole.bologna.it> 
-# Based on :
-# mpDris2 from Jean-Philippe Braun <eon@patapon.info>,
-#              Mantas Mikulėnas <grawity@gmail.com>
-# mpDris from: Erik Karlsson <pilo@ayeon.org>
-# Some bits taken from quodlibet mpris plugin by <christoph.reiter@gmx.at>
 
-import os,autoradio.daemon as daemon
-from autoradio import _version_
-from autoradio.autoplayer import player
-import autoradio.settings
-from autoradio import _version_
+import os,dbusgpio.daemon as daemon
+from dbusgpio import _version_
+import dbusgpio.settings
 
-playerd = daemon.Daemon(
+dbusgpiod = daemon.Daemon(
         stdin="/dev/null",
-        stdout=autoradio.settings.logfileplayer,
-        stderr=autoradio.settings.errfileplayer,
-        pidfile=autoradio.settings.lockfileplayer,
-        user=autoradio.settings.userplayer,
-        group=autoradio.settings.groupplayer
+        stdout=dbusgpio.settings.logfiledbusgpio,
+        stderr=dbusgpio.settings.errfiledbusgpio,
+        pidfile=dbusgpio.settings.lockfiledbusgpio,
+        user=dbusgpio.settings.userdbusgpio,
+        group=dbusgpio.settings.groupdbusgpio
 )
-
 
 def main ():
 
     import logging,logging.handlers
 
-    handler = logging.handlers.RotatingFileHandler(autoradio.autoradio_config.logfile, maxBytes=5000000, backupCount=10)
+    handler = logging.handlers.RotatingFileHandler(dbusgpio.settings.logfiledbusgpio, maxBytes=5000000, backupCount=10)
     formatter=logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
-    
+
     # Add the log message handler to the root logger
-    logging.getLogger('autoplayerd').addHandler(handler)
+    logging.getLogger('dbusgpiod').addHandler(handler)
 #    logging.getLogger('').setLevel(logging.DEBUG)
     
-    logging.info('Starting up autoplayerd version '+_version_)
+    logging.info('Starting up dbusgpiod version '+_version_)
 
 
 #   # Use logging for ouput at different *levels*.
@@ -47,8 +39,10 @@ def main ():
 #   handler = logging.StreamHandler(sys.stderr)
 #   log.addHandler(handler)
 
-    player.main(autoradio.settings.busaddressplayer,autoradio.settings.audiosinkplayer)
+#    player.main(autoradio.settings.busaddressplayer,autoradio.settings.audiosinkplayer)
 
+    import time
+    time.sleep(20)
 
 if __name__ == '__main__':
 
@@ -58,8 +52,8 @@ if __name__ == '__main__':
 
     # this is a triky for ubuntu and debian that remove /var/run every boot
     # ATTENTION, this should be a security problem
-    path=os.path.dirname(autoradio.settings.lockfileplayer)
-    if (not os.path.lexists(path) and path == "/var/run/autoradio" ):
+    path=os.path.dirname(dbusgpio.settings.lockfiledbusgpio)
+    if (not os.path.lexists(path) and path == "/var/run/dbusgpio" ):
         os.mkdir(path)
         if (os.getuid() == 0):
             from pwd import getpwnam
@@ -68,7 +62,7 @@ if __name__ == '__main__':
             gid = getgrnam(group)[2]
             os.chown(path,uid,gid)
 
-    if playerd.service(noptions=1000):
+    if dbusgpiod.service(noptions=1000):
 
         sys.stdout.write("Playerd version "+_version_+"\n")
         sys.stdout.write("Daemon started with pid %d\n" % os.getpid())
@@ -76,6 +70,3 @@ if __name__ == '__main__':
         sys.stderr.write("Daemon stderr output\n")
 
         sys.exit(main())  # (this code was run as script)
-
-
-

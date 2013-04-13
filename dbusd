@@ -16,28 +16,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
 # 
 
-from autoradio import daemon
-import autoradio.settings
+from dbusgpio import daemon
+import dbusgpio.settings
 
 dbusd = daemon.Daemon(
         stdin="/dev/null",
-        stdout=autoradio.settings.logfiledbus,
-        stderr=autoradio.settings.errfiledbus,
-        pidfile=autoradio.settings.lockfiledbus,
-        user=autoradio.settings.userdbus,
-        group=autoradio.settings.groupdbus
+        stdout=dbusgpio.settings.logfiledbus,
+        stderr=dbusgpio.settings.errfiledbus,
+        pidfile=dbusgpio.settings.lockfiledbus,
+        user=dbusgpio.settings.userdbus,
+        group=dbusgpio.settings.groupdbus
 )
 
 def main(self):
 
     import subprocess
 
-    busaddress = autoradio.settings.busaddressplayer
+    busaddress = dbusgpio.settings.busaddressdbusgpio
 
 
     if busaddress is not None:
 
-        self.procs=[subprocess.Popen(["dbus-daemon", "--config-file="+autoradio.settings.conffiledbus,
+        self.procs=[subprocess.Popen(["dbus-daemon", "--config-file="+dbusgpio.settings.conffiledbus,
             '--address='+busaddress, "--nofork"],cwd=self.cwd)]
     else:
         print "busaddress is not defined in config file: dbus-daemon not started"
