@@ -6,7 +6,7 @@ class pin(object):
 
   def __init__(self,channel,state=False,mode="pool",pull=None,frequency=None,dutycycle=0.,bouncetime=None,eventstatus=None,myfunction=None):
     """
-    pin : pin to manage (1-23)
+    channel : pin to manage (1-23)
     state : True, False
     mode : in, out, poll, pwm
     pull : up, down, None
@@ -77,10 +77,13 @@ class pin(object):
       
     return self.status
 
-  def changepwm(self,frequency=self.frequency,dutycycle=self.dutycycle):
+  def changepwm(self,frequency=None,dutycycle=None):
     """
     change a running pwm
     """
+
+    if frequency is None : frequency=self.frequency
+    if dutycycle is None : dutycycle=self.dutycycle
 
     if self.mode == "pwm":
 
@@ -92,7 +95,9 @@ class pin(object):
 
 
   def stoppwm(self):
-    self.pwm.stop()
+
+    if self.mode == "pwm":
+      self.pwm.stop()
 
 
   def removeevent(self):
@@ -102,27 +107,27 @@ class pin(object):
   def delete(self):
   
     self.stoppwm()
-    self.removeevent(self):
+    self.removeevent()
 
     self.mode="in"
     self.pull=None
 
     self.initialize()
 
-    GPIO.cleanup(channel=self.channel)
+    #GPIO.cleanup(channel=self.channel)
 
   def manageevent(self,channel):
-      #print "My Event happen! ",self.eventstatus
-    if self.channel != channe:
+    #print "My Event happen! ",channel
+    if self.channel != channel:
       print "mmm... somethink is wrong ! channel is not coerent."
       return
 
     status=GPIO.input(channel )
 
     if self.myfunction is not None :
-      if eventstatus is None:
+      if self.eventstatus is None:
         event=True
-      elif eventstatus == status:
+      elif self.eventstatus == status:
         event=false
       else:
         event=True
@@ -134,6 +139,7 @@ class pin(object):
       self.myfunction(self)
 
 def main():
+  import time
 
   def myfunction(pin):
     print "I get my new pin status : ",pin.channel,pin.status
@@ -144,19 +150,20 @@ def main():
 
   pin18=pin(channel=18,mode="in",pull="up",bouncetime=200,myfunction=myfunction)
 
-    while True:
-        try:
-            print "I am sleeping ..."
-            time.sleep(3)
-        except:
-            print
-            print "Exit"
-            pin18.delete()
-            break
+  while True:
+    try:
+      print "I am sleeping ..."
+      time.sleep(2)
+      print pin18.getstatus()
+    except:
+      print
+      print "Exit"
+      pin18.delete()
+      break
 
     # to reset every channel that has been set up by this program to INPUT 
     # with no pullup/pulldown and no event detection.
-    GPIO.cleanup()
+  GPIO.cleanup()
 
 if __name__ == '__main__':
-    main()  # (this code was run as script)
+  main()  # (this code was run as script)
