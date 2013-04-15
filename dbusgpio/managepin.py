@@ -41,10 +41,12 @@ class pin(object):
         GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
     if self.mode == "out":
-        GPIO.output(self.channel, self.state)
+      GPIO.setup(self.channel, GPIO.OUT)
+      GPIO.output(self.channel, self.state)
     
     elif self.mode == "pwm":
 
+      GPIO.setup(self.channel, GPIO.OUT)
       self.pwm = GPIO.PWM(self.channel, self.frequency)
       self.pwm.start(self.dutycycle)
 
@@ -70,12 +72,23 @@ class pin(object):
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent,bouncetime=self.bouncetime)
 
   def getstatus(self):
-    if self.mode=="pool" or self.mode == "in":
+    if self.mode=="pool" or self.mode == "in" or self.mode == "out":
       self.status=GPIO.input(self.channel)
     else:
-      self.mode=None
+      self.status=None
       
     return self.status
+
+
+  def setstatus(self,state):
+    if self.mode=="out":
+      GPIO.output(self.channel, state)
+      self.state=state
+    else:
+      self.status=None
+      
+    return self.status
+
 
   def changepwm(self,frequency=None,dutycycle=None):
     """
@@ -88,11 +101,12 @@ class pin(object):
     if self.mode == "pwm":
 
       if frequency != self.frequency:
-        self.pwm.ChangeFrequency(self.frequency)
+        self.pwm.ChangeFrequency(frequency)
+        self.frequency=frequency
 
       if dutycycle != self.dutycycle:
-        self.pwm.ChangeDutyCycle(self.dutycycle)
-
+        self.pwm.ChangeDutyCycle(dutycycle)
+        self.dutycycle=dutycycle
 
   def stoppwm(self):
 
@@ -147,15 +161,25 @@ def main():
 
   # to use Raspberry BCM pin numbers
   GPIO.setmode(GPIO.BCM)
+  dutycycle=0.
 
   pin18=pin(channel=18,mode="in",pull="up",bouncetime=200,myfunction=myfunction)
+  pin23=pin(channel=23,mode="pwm",frequency=50.,dutycycle=dutycycle)
 
   while True:
     try:
       print "I am sleeping ..."
       time.sleep(2)
-      print pin18.getstatus()
+      print "pin 18 status=",pin18.getstatus()
+      #pin23.setstatus(not pin23.getstatus())
+      dutycycle+=10.
+      if dutycycle > 100. :
+        dutycycle=0.
+      pin23.changepwm(dutycycle=dutycycle)
+      print "pin 23 dutycycle=",dutycycle,pin23.dutycycle
+
     except:
+      raise
       print
       print "Exit"
       pin18.delete()

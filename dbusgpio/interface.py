@@ -11,9 +11,18 @@ import dbus.service
 import dbus.mainloop.glib
 import logging
 import signal
+import managepin
+import RPi.GPIO as GPIO
+
+
+IFACE="org.gpio.myboard"
+root_interface = IFACE
+pins_interface = IFACE+".Pins"
+channel18_interface = pins_interface+".channel18"
+
 
 # python dbus bindings don't include annotations and properties
-GPIO_INTROSPECTION = """<node name="/org/gpio/Pins">
+GPIO_INTROSPECTION = """<node name=\""""+root_interface+"""\">
   <interface name="org.freedesktop.DBus.Introspectable">
     <method name="Introspect">
       <arg direction="out" name="xml_data" type="s"/>
@@ -40,110 +49,22 @@ GPIO_INTROSPECTION = """<node name="/org/gpio/Pins">
       <arg name="invalidated_properties" type="as"/>
     </signal>
   </interface>
-  <interface name="org.gpio.Pins">
+  <interface name=\""""+root_interface+"""\">
     <method name="Raise"/>
     <method name="Quit"/>
     <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     <property name="RpiRevision" type="s" access="read"/>
     <property name="Version" type="s" access="read"/>
   </interface>
-  <interface name="org.gpio.Pins.Channel18">
-    <method name="State"/>
-    <method name="SetPosition">
-      <arg direction="in" name="TrackId" type="o"/>
-      <arg direction="in" name="Position" type="x"/>
-    </method>
-    <method name="OpenUri">
-      <arg direction="in" name="Uri" type="s"/>
-    </method>
-    <signal name="Seeked">
-      <arg name="Position" type="x"/>
-    </signal>
-    <property name="PlaybackStatus" type="s" access="read">
+  <interface name=\""""+channel18_interface+"""\">
+    <property name="state" type="b" access="readwrite">
       <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
     </property>
-    <property name="LoopStatus" type="s" access="readwrite">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="Rate" type="d" access="readwrite">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="Shuffle" type="b" access="readwrite">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="Metadata" type="a{sv}" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="Volume" type="d" access="readwrite">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
-    </property>
-    <property name="Position" type="x" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
-    </property>
-    <property name="MinimumRate" type="d" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="MaximumRate" type="d" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="CanGoNext" type="b" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="CanGoPrevious" type="b" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="CanPlay" type="b" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="CanPause" type="b" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="CanSeek" type="b" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
-    </property>
-    <property name="CanControl" type="b" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
-    </property>
-  </interface>
-  <interface name="org.gpio.MediaPlayer2.TrackList">
-    <property access="read" type="b" name="CanEditTracks" />
-    <method name="GoTo">
-      <arg direction="in"  type="s" name="trackid" />
-    </method>
-    <property access="read" type="as" name="Tracks" />
-    <method name="AddTrack">
-      <arg direction="in"  type="s" name="uri" />
-      <arg direction="in"  type="s" name="aftertrack" />
-      <arg direction="in"  type="b" name="setascurrent" />
-    </method>
-    <method name="GetTracksMetadata">
-      <arg direction="in"  type="as" name="trackids" />
-      <arg direction="out" type="aa{sv}" />
-    </method>
-    <method name="RemoveTrack">
-      <arg direction="in"  type="s" name="trackid" />
-    </method>
-    <signal name="TrackListReplaced">
-      <arg type="ao" />
-      <arg type="o" />
-    </signal>
-    <signal name="TrackAdded">
-      <arg type="a{sv}" />
-      <arg type="o" />
-    </signal>
-    <signal name="TrackRemoved">
-      <arg type="o" />
-    </signal>
-    <signal name="TrackMetadataChanged">
-      <arg type="o" />
-      <arg type="a{sv}" />
-    </signal>
   </interface>
 </node>"""
 
-PLAYER_IFACE="org.gpio.MediaPlayer2.Player"
-TRACKLIST_IFACE="org.gpio.MediaPlayer2.TrackList"
-IFACE="org.gpio.MediaPlayer2"
+
+print GPIO_INTROSPECTION
 
 class NotSupportedException(dbus.DBusException):
   _dbus_error_name = 'org.gpio.NotSupported'
@@ -152,8 +73,8 @@ class NotSupportedException(dbus.DBusException):
 class gpio(dbus.service.Object):
     ''' The base object of an GPIO management'''
 
-    __name = "org.gpio.MediaPlayer2.AutoPlayer"
-    __path = "/org/gpio/MediaPlayer2"
+    __name = "org.gpio.myboard.Pins"
+    __path = "/org/gpio/myboard"
     __introspect_interface = "org.freedesktop.DBus.Introspectable"
     __prop_interface = dbus.PROPERTIES_IFACE
 
@@ -177,6 +98,12 @@ class gpio(dbus.service.Object):
 
         self.acquire_name()
 
+        # to use Raspberry BCM pin numbers
+        GPIO.setmode(GPIO.BCM)
+
+        self.pin18=managepin.pin(channel=18)
+
+
     def _name_owner_changed_callback(self, name, old_owner, new_owner):
         if name == self.__name and old_owner == self._uname and new_owner != "":
             try:
@@ -184,7 +111,8 @@ class gpio(dbus.service.Object):
             except:
                 pid = None
             logging.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
-            self.player.loop.quit()
+
+            self.pin18.delete()
 
     def acquire_name(self):
         self._bus_name = dbus.service.BusName(gpio.__name,
@@ -196,79 +124,39 @@ class gpio(dbus.service.Object):
             del self._bus_name
 
 
-    def __PlaybackStatus(self):
-        return self.player.playmode
 
-    def __Metadata(self):
+    def __getRpiRevision(self):
+        return self.pin18.rpi_revision
 
-      meta=self.GetTracksMetadata((self.player.playlist.current,))
-      if len(meta) > 0:
-        return dbus.Dictionary(meta[0], signature='sv') 
-      else:
-        return dbus.Dictionary({}, signature='sv') 
+    def __getVersion(self):
+        self.pin18.version
 
 
-    def __Position(self):
-      position = self.player.position()
-      if position is None:
-        return dbus.Int64(0)
-      else:
-        return dbus.Int64(position)
+    def __getStatus(self):
+        return self.pin18.getstatus()
 
-    def __CanPlay(self):
-        if self.player.playlist.current is None :
-            return False
-        else:
-            return True
-
-    def __Tracks(self):
-
-        tracks=dbus.Array([], signature='s')
-        for track in self.player.playlist:
-            tracks.append(track)
-        return tracks
+    def __setStatus(self,status):
+        self.pin18.setstatus(status)
 
 
-    __root_interface = IFACE
     __root_props = {
-        "CanQuit": (True, None),
-        "CanRaise": (False, None),
-        "DesktopEntry": ("gpio", None),
-        "HasTrackList": (True, None),
-        "SupportedUriSchemes": (dbus.Array(signature="s"), None),
-        "SupportedMimeTypes": (dbus.Array(signature="s"), None),
-        "CanSetFullscreen": (False, None),
+        "Quit": (False,None),
+        "Raise": (False,None),
     }
 
-    __player_interface = PLAYER_IFACE
-    __player_props = {
-        "PlaybackStatus": (__PlaybackStatus, None),
-        "LoopStatus": (False, None),
-        "Rate": (1.0, None),
-        "Shuffle": (False, None),
-        "Metadata": (__Metadata, None),
-        "Volume": (1.0, None),
-        "Position": (__Position, None),
-        "MinimumRate": (1.0, None),
-        "MaximumRate": (1.0, None),
-        "CanGoNext": (True, None),
-        "CanGoPrevious": (True, None),
-        "CanPlay": (__CanPlay, None),
-        "CanPause": (True, None),
-        "CanSeek": (True, None),
-        "CanControl": (True, None),
+    __pins_props = {
+        "RpiRevision": (__getRpiRevision,None),
+        "Version": (__getVersion,None),
     }
 
-    __tracklist_interface = TRACKLIST_IFACE
-    __tracklist_props = {
-        "CanEditTracks": (True, None),
-        "Tracks": (__Tracks, None),
-}
+    __channel18_props = {
+        "Status": (__getStatus, __setStatus),
+    }
 
     __prop_mapping = {
-        __player_interface: __player_props,
-        __root_interface: __root_props,
-        __tracklist_interface: __tracklist_props,
+        root_interface: __root_props,
+        pins_interface: __pins_props,
+        channel18_interface: __channel18_props,
     }
 
 
@@ -317,127 +205,13 @@ class gpio(dbus.service.Object):
         self.PropertiesChanged(interface, {prop: value}, [])
         return value
 
-
-    def attach_player(self,player):
-        self.player=player
-
-
-    @dbus.service.signal(PLAYER_IFACE,signature='x')
-    def Seeked(self, position):
-      logging.debug("Seeked to %i" % position)
-      return float(position)
-
-    # TrackAdded 	(a{sv}: Metadata, o: AfterTrack) 	
-    @dbus.service.signal(TRACKLIST_IFACE,signature='a{sv}o')
-    def TrackAdded(self, metadata,aftertrack):
-      logging.debug("TrackAdded to %s" % aftertrack)
-      pass
-
-    # TrackRemoved 	(o: TrackId) 	
-    @dbus.service.signal(TRACKLIST_IFACE,signature='o')
-    def TrackRemoved(self,trackid):
-      logging.debug("TrackRemoved %s" % trackid)
-
-# here seem pydbus bug 
-# disabled for now
-
-#process 22558: arguments to dbus_message_iter_append_basic() were incorrect, assertion "_dbus_check_is_valid_path (*string_p)" failed in file dbus-message.c line 2531.
-#This is normally a bug in some application using the D-Bus library.
-#  D-Bus not built with -rdynamic so unable to print a backtrace
-#Annullato (core dumped)
-
-      try:
-        obp=dbus.ObjectPath("/org/gpio/MediaPlayer2/TrackList/"+trackid)
-      except:
-        logging.error("building ObjectPath to return in TrackRemoved %s" % trackid)
-        obp=dbus.ObjectPath("/org/gpio/MediaPlayer2/TrackList/NoTrack")
-
-      return obp 
-
     @dbus.service.method(IFACE)
     def Raise(self):
       pass
 
     @dbus.service.method(IFACE)
     def Quit(self):
-      self.player.exit()
-      self.release_name()
-
-    @dbus.service.method(PLAYER_IFACE)
-    def Next(self):
-      self.player.next()
-
-    @dbus.service.method(PLAYER_IFACE)
-    def Previous(self):
-      self.player.previous()
-
-    @dbus.service.method(PLAYER_IFACE)
-    def Pause(self):
-      self.player.pause()
-
-    @dbus.service.method(PLAYER_IFACE)
-    def PlayPause(self):
-      self.player.playpause()
-
-    @dbus.service.method(PLAYER_IFACE)
-    def Stop(self):
-      self.player.stop()
-
-    @dbus.service.method(PLAYER_IFACE)
-    def Play(self):
-
-      logging.info( "Play")
-
-      self.player.loaduri()
-      self.player.play()
-
-    @dbus.service.method(PLAYER_IFACE,in_signature='x')
-    def Seek(self,offset):
-      position=self.player.seek(offset)
-      if position is not None: self.Seeked(position)
-
-    @dbus.service.method(PLAYER_IFACE,in_signature='sx')
-    def SetPosition(self,trackid,position):
-      self.player.setposition(trackid,position)
-      self.Seeked(position)
-
-    @dbus.service.method(PLAYER_IFACE,in_signature='s')
-    def OpenUri(self,uri):
-      self.player.addtrack(uri,setascurrent=True)
-      self.Stop()
-      self.Play()
-
-
-#tracklist
-
-    @dbus.service.method(TRACKLIST_IFACE,in_signature='ssb', out_signature='')
-    def AddTrack(self,uri, aftertrack, setascurrent):
-        self.player.addtrack(uri, aftertrack, setascurrent)
-
-    @dbus.service.method(TRACKLIST_IFACE,in_signature='s', out_signature='')
-    def RemoveTrack(self, trackid):
-      if self.player.playlist.current == trackid:
-        self.Next()
-      self.player.removetrack(trackid)
-      #disable for a bug in pydbus ??
-      #self.TrackRemoved(trackid)
-
-    @dbus.service.method(TRACKLIST_IFACE,in_signature='s', out_signature='')
-    def GoTo(self, trackid):
-        self.player.goto(trackid)
-
-    @dbus.service.method(TRACKLIST_IFACE,in_signature='as', out_signature='aa{sv}')
-    def GetTracksMetadata(self,trackids):
-        metadata=dbus.Array([], signature='aa{sv}')
-
-        return metadata
-
-    def updateinfo(self):
-      if self.player.statuschanged:
-        self.update_property(PLAYER_IFACE,"PlaybackStatus")
-        self.player.statuschanged=False
-      self.update_property(PLAYER_IFACE,"Position")
-      return True
+      pass
 
 
 # Handle signals more gracefully
@@ -501,5 +275,5 @@ def main(busaddress=None,myaudiosink=None):
 
 if __name__ == '__main__':
 
-  main()# (this code was run as script)
+  main(busaddress='tcp:host=192.168.1.180,port=1234')# (this code was run as script)
 

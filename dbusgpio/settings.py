@@ -18,7 +18,7 @@ configspec['dbusd']={}
 configspec['dbusd']['logfile']  = "string(default='/tmp/dbusd.log')"
 configspec['dbusd']['errfile']  = "string(default='/tmp/dbusd.err')"
 configspec['dbusd']['lockfile'] = "string(default='/tmp/dbusd.lock')"
-configspec['dbusd']['conffile'] = "string(default='dbus-dbusgpio.conf')"
+configspec['dbusd']['conffile'] = "string(default='dbus-gpio.conf')"
 configspec['dbusd']['user']     = "string(default=None)"
 configspec['dbusd']['group']    = "string(default=None)"
 
