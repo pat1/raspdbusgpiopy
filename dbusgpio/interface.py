@@ -14,7 +14,6 @@ import signal
 import managepin
 import RPi.GPIO as GPIO
 
-
 IFACE="org.gpio.myboard"
 root_interface = IFACE
 pins_interface = IFACE+".Pins"

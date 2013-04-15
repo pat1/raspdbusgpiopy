@@ -25,10 +25,19 @@ class pin(object):
     self.bouncetime=bouncetime
     self.eventstatus=eventstatus
     self.myfunction=myfunction
+    self.rpi_revision=None
+    self.version=None
     
     self.initialize()
 
   def initialize(self):
+
+    #To discover the Raspberry Pi board revision:
+    self.rpi_revision=GPIO.RPI_REVISION
+    
+    #To discover the version of RPi.GPIO:
+    self.version=GPIO.VERSION
+
 
     if self.mode == "poll" or self.mode == "in":
       # set up GPIO output with pull-up control
