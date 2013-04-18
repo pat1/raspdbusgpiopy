@@ -7,6 +7,7 @@
 import os,dbusgpio.daemon as daemon
 from dbusgpio import _version_
 import dbusgpio.settings
+import dbusgpio.interface
 
 dbusgpiod = daemon.Daemon(
         stdin="/dev/null",
@@ -35,14 +36,11 @@ def main ():
 #   # Use logging for ouput at different *levels*.
 #   #
 #   logging.getLogger().setLevel(logging.INFO)
-#   log = logging.getLogger("autoplayer")
+#   log = logging.getLogger("dbusgpiod")
 #   handler = logging.StreamHandler(sys.stderr)
 #   log.addHandler(handler)
 
-#    player.main(autoradio.settings.busaddressplayer,autoradio.settings.audiosinkplayer)
-
-    import time
-    time.sleep(20)
+    dbusgpio.interface.main(pinlist=dbusgpio.settings.pinlistdbusgpio,busaddress=dbusgpio.settings.busaddressdbusgpio)
 
 if __name__ == '__main__':
 
@@ -56,15 +54,18 @@ if __name__ == '__main__':
     if (not os.path.lexists(path) and path == "/var/run/dbusgpio" ):
         os.mkdir(path)
         if (os.getuid() == 0):
-            from pwd import getpwnam
-            from grp import getgrnam
-            uid = getpwnam(user)[2]
-            gid = getgrnam(group)[2]
-            os.chown(path,uid,gid)
+            user=dbusgpio.settings.userdbusgpio
+            group=dbusgpio.settings.groupdbusgpio
+            if user is not None and group is not None:
+                from pwd import getpwnam
+                from grp import getgrnam
+                uid = getpwnam(user)[2]
+                gid = getgrnam(group)[2]
+                os.chown(path,uid,gid)
 
     if dbusgpiod.service(noptions=1000):
 
-        sys.stdout.write("Playerd version "+_version_+"\n")
+        sys.stdout.write("dbusgpiod version "+_version_+"\n")
         sys.stdout.write("Daemon started with pid %d\n" % os.getpid())
         sys.stdout.write("Daemon stdout output\n")
         sys.stderr.write("Daemon stderr output\n")

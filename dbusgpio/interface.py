@@ -14,14 +14,152 @@ import signal
 import managepin
 import RPi.GPIO as GPIO
 
-IFACE="org.gpio.myboard"
-root_interface = IFACE
-pins_interface = IFACE+".Pins"
-channel18_interface = pins_interface+".channel18"
+BOARDNAME="myboard"
+IFACE="org.gpio"
 
 
-# python dbus bindings don't include annotations and properties
-GPIO_INTROSPECTION = """<node name=\""""+root_interface+"""\">
+class NotSupportedException(dbus.DBusException):
+  _dbus_error_name = 'org.gpio.NotSupported'
+
+def interface2pin(interface):
+  word=interface.split(".")
+  return int(word[len(word)-1][7:])
+
+class gpio(dbus.service.Object):
+    ''' The base object of an GPIO management'''
+
+    __root_interface = IFACE+"."+BOARDNAME
+    __path = "/org/gpio/"+BOARDNAME
+    __iface= "org.gpio."+BOARDNAME
+    __name = __iface + ".Pins"
+
+    __introspect_interface = "org.freedesktop.DBus.Introspectable"
+    __prop_interface = dbus.PROPERTIES_IFACE
+
+    def __init__(self,pinlist=(18,),busaddress=None,loop=None):
+
+      self.pinlist=pinlist
+
+      if busaddress is None:
+        self._bus = dbus.SessionBus()
+      else:
+        self._bus =dbus.bus.BusConnection(busaddress)
+
+      dbus.service.Object.__init__(self, self._bus,
+                                     gpio.__path)
+
+
+      self._uname = self._bus.get_unique_name()
+      self._dbus_obj = self._bus.get_object("org.freedesktop.DBus",
+                                            "/org/freedesktop/DBus")
+      self._dbus_obj.connect_to_signal("NameOwnerChanged",
+                                       self._name_owner_changed_callback,
+                                       arg0=self.__name)
+      self.acquire_name()
+
+        # to use Raspberry BCM pin numbers
+      GPIO.setmode(GPIO.BCM)
+
+      self.pins={}
+
+
+      __root_props = {
+        "RpiRevision": (self.__getRpiRevision,None),
+        "Version": (self.__getVersion,None),
+        }
+
+      self.__prop_mapping = {
+        self.__root_interface: __root_props,
+        }
+
+      for pin in self.pinlist:
+        channel_interface=self.__root_interface+".pins.channel"+str(pin)
+
+        __channel_props = {
+          "Mode":       (self.__getMode,       self.__setMode),
+          "Status":     (self.__getStatus,     self.__setStatus),
+          "Pull":       (self.__getPull,       self.__setPull),
+          "Frequency":  (self.__getFrequency,  self.__setFrequency),
+          "Dutycycle":  (self.__getDutycycle,  self.__setDutycycle),
+          "Bouncetime": (self.__getBouncetime, self.__setBouncetime),
+          }
+
+        self.__prop_mapping[channel_interface]= __channel_props
+
+      self.loop=loop
+
+
+    def _name_owner_changed_callback(self, name, old_owner, new_owner):
+        if name == self.__name and old_owner == self._uname and new_owner != "":
+            try:
+                pid = self._dbus_obj.GetConnectionUnixProcessID(new_owner)
+            except:
+                pid = None
+            logging.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
+
+            self.pin18.delete()
+
+    def acquire_name(self):
+        self._bus_name = dbus.service.BusName(gpio.__name,
+                                              bus=self._bus,
+                                              allow_replacement=True,
+                                              replace_existing=True)
+    def release_name(self):
+        if hasattr(self, "_bus_name"):
+            del self._bus_name
+
+
+    def __getRpiRevision(self):
+      return self.pins[self.pins.keys()[0]].rpi_revision
+
+    def __getVersion(self):
+      return self.pins[self.pins.keys()[0]].version
+
+
+    def __getMode(self,pin):
+      return self.pins[str(pin)].mode
+
+    def __setMode(self,pin,status):
+      self.pins[str(pin)].mode=status
+
+    def __getStatus(self,pin):
+      return self.pins[str(pin)].status
+
+    def __setStatus(self,pin,status):
+      self.pins[str(pin)].status=status
+
+    def __getPull(self,pin):
+      return str(self.pins[str(pin)].pull)
+
+    def __setPull(self,pin,status):
+      self.pins[str(pin)].pull=pull
+
+
+    def __getFrequency(self,pin):
+      return dbus.Double(self.pins[str(pin)].frequency)
+
+    def __setFrequency(self,pin,status):
+      self.pins[str(pin)].frequency=frequency
+
+    def __getDutycycle(self,pin):
+      return dbus.Double(self.pins[str(pin)].dutycycle)
+
+    def __setDutycycle(self,pin,status):
+      self.pins[str(pin)].dutycycle=dutycycle
+
+    def __getBouncetime(self,pin):
+      return dbus.Int64(self.pins[str(pin)].bouncetime)
+
+    def __setBouncetime(self,pin,status):
+      self.pins[str(pin)].bouncetime=bouncetime
+
+
+
+    @dbus.service.method(__introspect_interface)
+    def Introspect(self):
+
+      # python dbus bindings don't include annotations and properties
+      GPIO_INTROSPECTION = """<node name=\""""+self.__root_interface+"""\">
   <interface name="org.freedesktop.DBus.Introspectable">
     <method name="Introspect">
       <arg direction="out" name="xml_data" type="s"/>
@@ -48,120 +186,41 @@ GPIO_INTROSPECTION = """<node name=\""""+root_interface+"""\">
       <arg name="invalidated_properties" type="as"/>
     </signal>
   </interface>
-  <interface name=\""""+root_interface+"""\">
+  <interface name=\""""+self.__root_interface+"""\">
     <method name="Raise"/>
     <method name="Quit"/>
     <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     <property name="RpiRevision" type="s" access="read"/>
     <property name="Version" type="s" access="read"/>
-  </interface>
-  <interface name=\""""+channel18_interface+"""\">
-    <property name="state" type="b" access="readwrite">
+  </interface>"""
+  
+      for pin in self.pinlist:
+        GPIO_INTROSPECTION += """
+  <interface name=\""""+self.__root_interface+".pins.channel"+str(pin)+"""\">
+    <property name="Mode" type="s" access="readwrite">
       <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
     </property>
-  </interface>
-</node>"""
+    <property name="Status" type="b" access="readwrite">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
+    </property>
+    <property name="Pull" type="s" access="readwrite">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
+    </property>
+    <property name="Frequency" type="d" access="readwrite">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
+    </property>
+    <property name="Dutycycle" type="d" access="readwrite">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
+    </property>
+    <property name="Bouncetime" type="i" access="readwrite">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
+    </property>
+  </interface>"""
 
-
-print GPIO_INTROSPECTION
-
-class NotSupportedException(dbus.DBusException):
-  _dbus_error_name = 'org.gpio.NotSupported'
-
-
-class gpio(dbus.service.Object):
-    ''' The base object of an GPIO management'''
-
-    __name = "org.gpio.myboard.Pins"
-    __path = "/org/gpio/myboard"
-    __introspect_interface = "org.freedesktop.DBus.Introspectable"
-    __prop_interface = dbus.PROPERTIES_IFACE
-
-    def __init__(self,busaddress=None):
-
-        if busaddress is None:
-          self._bus = dbus.SessionBus()
-        else:
-          self._bus =dbus.bus.BusConnection(busaddress)
-
-        dbus.service.Object.__init__(self, self._bus,
-                                     gpio.__path)
-
-
-        self._uname = self._bus.get_unique_name()
-        self._dbus_obj = self._bus.get_object("org.freedesktop.DBus",
-                                              "/org/freedesktop/DBus")
-        self._dbus_obj.connect_to_signal("NameOwnerChanged",
-                                         self._name_owner_changed_callback,
-                                         arg0=self.__name)
-
-        self.acquire_name()
-
-        # to use Raspberry BCM pin numbers
-        GPIO.setmode(GPIO.BCM)
-
-        self.pin18=managepin.pin(channel=18)
-
-
-    def _name_owner_changed_callback(self, name, old_owner, new_owner):
-        if name == self.__name and old_owner == self._uname and new_owner != "":
-            try:
-                pid = self._dbus_obj.GetConnectionUnixProcessID(new_owner)
-            except:
-                pid = None
-            logging.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
-
-            self.pin18.delete()
-
-    def acquire_name(self):
-        self._bus_name = dbus.service.BusName(gpio.__name,
-                                              bus=self._bus,
-                                              allow_replacement=True,
-                                              replace_existing=True)
-    def release_name(self):
-        if hasattr(self, "_bus_name"):
-            del self._bus_name
-
-
-
-    def __getRpiRevision(self):
-        return self.pin18.rpi_revision
-
-    def __getVersion(self):
-        self.pin18.version
-
-
-    def __getStatus(self):
-        return self.pin18.getstatus()
-
-    def __setStatus(self,status):
-        self.pin18.setstatus(status)
-
-
-    __root_props = {
-        "Quit": (False,None),
-        "Raise": (False,None),
-    }
-
-    __pins_props = {
-        "RpiRevision": (__getRpiRevision,None),
-        "Version": (__getVersion,None),
-    }
-
-    __channel18_props = {
-        "Status": (__getStatus, __setStatus),
-    }
-
-    __prop_mapping = {
-        root_interface: __root_props,
-        pins_interface: __pins_props,
-        channel18_interface: __channel18_props,
-    }
-
-
-    @dbus.service.method(__introspect_interface)
-    def Introspect(self):
-        return GPIO_INTROSPECTION
+      GPIO_INTROSPECTION += """
+</node>
+"""
+      return GPIO_INTROSPECTION
 
     @dbus.service.signal(__prop_interface, signature="sa{sv}as")
     def PropertiesChanged(self, interface, changed_properties,
@@ -173,7 +232,10 @@ class gpio(dbus.service.Object):
     def Get(self, interface, prop):
         getter, setter = self.__prop_mapping[interface][prop]
         if callable(getter):
-            return getter(self)
+          if interface.startswith(self.__root_interface+".pins.channel"):
+            return getter(interface2pin(interface))
+          else:
+            return getter()
         return getter
 
     @dbus.service.method(__prop_interface,
@@ -181,8 +243,11 @@ class gpio(dbus.service.Object):
     def Set(self, interface, prop, value):
         getter, setter = self.__prop_mapping[interface][prop]
         if setter is not None:
-            setter(self,value)
-
+          if interface.startswith(self.__root_interface+".pins.channel"):
+            setter(interface2pin(interface),value)
+          else:
+            setter(value)
+            
     @dbus.service.method(__prop_interface,
                          in_signature="s", out_signature="a{sv}")
     def GetAll(self, interface):
@@ -190,28 +255,38 @@ class gpio(dbus.service.Object):
         props = self.__prop_mapping[interface]
         for key, (getter, setter) in props.iteritems():
             if callable(getter):
-                getter = getter(self)
+              if interface.startswith(self.__root_interface+".pins.channel"):
+                getter = getter(interface2pin(interface))
+              else:
+                getter = getter()
             read_props[key] = getter
         return read_props
 
     def update_property(self, interface, prop):
         getter, setter = self.__prop_mapping[interface][prop]
         if callable(getter):
-            value = getter(self)
+          if interface.startswith(self.__root_interface+".pins.channel"):
+            value = getter(interface2pin(interface))
+          else:
+            value = getter()
         else:
             value = getter
         logging.debug('Updated property: %s = %s' % (prop, value))
         self.PropertiesChanged(interface, {prop: value}, [])
         return value
 
-    @dbus.service.method(IFACE)
+    @dbus.service.method(IFACE+"."+BOARDNAME)
     def Raise(self):
-      pass
+      for pin in self.pinlist:
+        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",pull=None,frequency=10.,dutycycle=10.,bouncetime=10)
 
-    @dbus.service.method(IFACE)
+    @dbus.service.method(IFACE+"."+BOARDNAME)
     def Quit(self):
-      pass
-
+      for pin in self.pins.iterkeys():
+        self.pins[pin].delete()
+      self.pins={}
+      self.loop.quit()
+      self.release_name()
 
 # Handle signals more gracefully
     def handle_sigint(self,signum, frame):
@@ -219,7 +294,7 @@ class gpio(dbus.service.Object):
       self.Quit()
 
 
-def main(busaddress=None,myaudiosink=None):  
+def main(pinlist=(18,),busaddress=None):  
 
   # Use logging for ouput at different *levels*.
   #
@@ -249,7 +324,7 @@ def main(busaddress=None,myaudiosink=None):
 
     #gobject.timeout_add( 1000,ap.player.printinfo)
 
-    gp = gpio(busaddress=busaddress)
+    gp = gpio(pinlist=pinlist,busaddress=busaddress,loop=loop)
 
     signal.signal(signal.SIGINT, gp.handle_sigint)
 

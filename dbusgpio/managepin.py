@@ -4,31 +4,132 @@ import RPi.GPIO as GPIO
 
 class pin(object):
 
-  def __init__(self,channel,state=False,mode="pool",pull=None,frequency=None,dutycycle=0.,bouncetime=None,eventstatus=None,myfunction=None):
+
+  def __init__(self,channel,state=False,mode="pool",pull=None,frequency=None,dutycycle=None,bouncetime=None,eventstatus=None,myfunction=None):
     """
     channel : pin to manage (1-23)
     state : True, False
     mode : in, out, poll, pwm
     pull : up, down, None
     frequency : freq Hz, None
-    dutycycle : 0.-100.
-    bouncetime : milliseconds, software debouncing 
+    dutycycle : 0.-100., None
+    bouncetime : milliseconds, software debouncing , None
     eventstatus : event to manage (1/0/None) if None both events will be take in account
     myfunction : function to call on events
     """
     self.channel=channel
-    self.state=state
-    self.mode=mode
-    self.pull=pull
-    self.frequency=frequency
-    self.dutycycle=dutycycle
-    self.bouncetime=bouncetime
+    self._state=state
+    self._mode=mode
+    self._pull=pull
+    self._frequency=frequency
+    self._dutycycle=dutycycle
+    self._bouncetime=bouncetime
     self.eventstatus=eventstatus
     self.myfunction=myfunction
     self.rpi_revision=None
     self.version=None
     
     self.initialize()
+
+
+  @property
+  def status(self):
+
+    if self.mode=="pool" or self.mode == "in" or self.mode == "out":
+      self._status=GPIO.input(self.channel)
+    else:
+      self._status=None
+    return self._status
+
+  @status.setter
+  def status(self, value):
+
+    if self.mode=="out":
+      GPIO.output(self.channel, value)
+      self._state=value
+    else:
+      self._status=None
+      
+
+  @property
+  def mode(self):
+    return self._mode
+
+  @mode.setter
+  def mode(self, value):
+
+    self.stoppwm()
+    self.removeevent()
+    self._mode=value
+    self.initialize()
+      
+
+  @property
+  def pull(self):
+    return self._pull
+
+  @pull.setter
+  def pull(self, value):
+
+    self._pull=value
+
+#    if self.mode == "poll" or self.mode == "in":
+#      # set up GPIO output with pull-up control
+#      #   (pull_up_down be PUD_OFF, PUD_UP or PUD_DOWN, default PUD_OFF)
+#      if self.pull == "up":
+#        GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+#      elif self.pull == "down":
+#        GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+#      else:
+#        GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+
+#oppure
+    self.mode=self.mode
+
+
+  @property
+  def bouncetime(self):
+    return self._bouncetime
+
+  @bouncetime.setter
+  def bouncetime(self, value):
+    self._bouncetime=value
+
+
+  @property
+  def frequency(self):
+    return self._frequency
+
+
+  @frequency.setter
+  def frequency(self, frequency):
+    """
+    change a running pwm
+    """
+    if frequency is None : frequency=self.frequency
+    if self.mode == "pwm":
+
+      if frequency != self.frequency:
+        self.pwm.ChangeFrequency(frequency)
+    self._frequency=frequency
+
+
+  @property
+  def dutycycle(self):
+    return self._dutycycle
+
+  @dutycycle.setter
+  def dutycycle(self, dutycycle):
+    """
+    change a running pwm
+    """
+    if dutycycle is None : dutycycle=self.dutycycle
+
+    if self.mode == "pwm":
+      if dutycycle != self.dutycycle:
+        self.pwm.ChangeDutyCycle(dutycycle)
+    self._dutycycle=dutycycle
+
 
   def initialize(self):
 
@@ -64,7 +165,7 @@ class pin(object):
 
     elif self.mode == "in":
 
-      if self.bouncetime is None:
+      if self.bouncetime is None or self.bouncetime == 0:
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent)
       else:
         #manage contact bounce.
@@ -79,6 +180,7 @@ class pin(object):
         #circuits that respond fast enough to misinterpret the on-off pulses as a data stream.
 
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent,bouncetime=self.bouncetime)
+
 
   def getstatus(self):
     if self.mode=="pool" or self.mode == "in" or self.mode == "out":
@@ -135,8 +237,9 @@ class pin(object):
     self.mode="in"
     self.pull=None
 
-    self.initialize()
+    GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
+    #self.initialize()
     #GPIO.cleanup(channel=self.channel)
 
   def manageevent(self,channel):
@@ -155,7 +258,7 @@ class pin(object):
       else:
         event=True
     else:
-      event=false
+      event=False
 
     self.status=status
     if event:
@@ -179,12 +282,12 @@ def main():
     try:
       print "I am sleeping ..."
       time.sleep(2)
-      print "pin 18 status=",pin18.getstatus()
-      #pin23.setstatus(not pin23.getstatus())
+      print "pin 18 status=",pin18.status
+      #pin23.status= not pin23.status()
       dutycycle+=10.
       if dutycycle > 100. :
         dutycycle=0.
-      pin23.changepwm(dutycycle=dutycycle)
+      pin23.dutycycle=dutycycle
       print "pin 23 dutycycle=",dutycycle,pin23.dutycycle
 
     except:

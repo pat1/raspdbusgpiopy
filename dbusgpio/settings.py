@@ -12,6 +12,7 @@ configspec['dbusgpiod']['lockfile'] = "string(default='/tmp/dbusgpiod.lock')"
 configspec['dbusgpiod']['user']     = "string(default=None)"
 configspec['dbusgpiod']['group']    = "string(default=None)"
 configspec['dbusgpiod']['busaddress']    = "string(default=None)"
+configspec['dbusgpiod']['pinlist']    = "int_list(default=list(18,23))"
 
 configspec['dbusd']={}
 
@@ -52,6 +53,7 @@ lockfiledbusgpio             = config['dbusgpiod']['lockfile']
 userdbusgpio                 = config['dbusgpiod']['user']
 groupdbusgpio                = config['dbusgpiod']['group']
 busaddressdbusgpio           = config['dbusgpiod']['busaddress']
+pinlistdbusgpio              = config['dbusgpiod']['pinlist']
 
 # section dbusd
 logfiledbus              = config['dbusd']['logfile']
