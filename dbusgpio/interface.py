@@ -39,6 +39,7 @@ class gpio(dbus.service.Object):
     def __init__(self,pinlist=(18,),busaddress=None,loop=None):
 
       self.pinlist=pinlist
+      self.running=False
 
       if busaddress is None:
         self._bus = dbus.SessionBus()
@@ -66,6 +67,7 @@ class gpio(dbus.service.Object):
       __root_props = {
         "RpiRevision": (self.__getRpiRevision,None),
         "Version": (self.__getVersion,None),
+        "Running": (self.__getRunning,None),
         }
 
       self.__prop_mapping = {
@@ -115,12 +117,15 @@ class gpio(dbus.service.Object):
     def __getVersion(self):
       return self.pins[self.pins.keys()[0]].version
 
+    def __getRunning(self):
+      return self.running 
+
 
     def __getMode(self,pin):
       return self.pins[str(pin)].mode
 
-    def __setMode(self,pin,status):
-      self.pins[str(pin)].mode=status
+    def __setMode(self,pin,mode):
+      self.pins[str(pin)].mode=mode
 
     def __getStatus(self,pin):
       return self.pins[str(pin)].status
@@ -131,7 +136,7 @@ class gpio(dbus.service.Object):
     def __getPull(self,pin):
       return str(self.pins[str(pin)].pull)
 
-    def __setPull(self,pin,status):
+    def __setPull(self,pin,pull):
       self.pins[str(pin)].pull=pull
 
 
@@ -192,6 +197,7 @@ class gpio(dbus.service.Object):
     <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     <property name="RpiRevision" type="s" access="read"/>
     <property name="Version" type="s" access="read"/>
+    <property name="Running" type="b" access="read"/>
   </interface>"""
   
       for pin in self.pinlist:
@@ -278,7 +284,8 @@ class gpio(dbus.service.Object):
     @dbus.service.method(IFACE+"."+BOARDNAME)
     def Raise(self):
       for pin in self.pinlist:
-        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",pull=None,frequency=10.,dutycycle=10.,bouncetime=10)
+        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",pull=None,frequency=50.,dutycycle=50.,bouncetime=10)
+      self.running=True
 
     @dbus.service.method(IFACE+"."+BOARDNAME)
     def Quit(self):
@@ -287,6 +294,7 @@ class gpio(dbus.service.Object):
       self.pins={}
       self.loop.quit()
       self.release_name()
+      self.running=False
 
 # Handle signals more gracefully
     def handle_sigint(self,signum, frame):

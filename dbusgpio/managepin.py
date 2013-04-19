@@ -58,11 +58,14 @@ class pin(object):
   @mode.setter
   def mode(self, value):
 
-    self.stoppwm()
-    self.removeevent()
-    self._mode=value
-    self.initialize()
-      
+    if not value in ("in","out","pool"):
+      print "mode can be: ",("in","out","pool")
+    else:
+      self.stoppwm()
+      self.removeevent()
+      self._mode=value
+      self.initialize()
+
 
   @property
   def pull(self):
@@ -152,7 +155,7 @@ class pin(object):
 
     if self.mode == "out":
       GPIO.setup(self.channel, GPIO.OUT)
-      GPIO.output(self.channel, self.state)
+      GPIO.output(self.channel, self.status)
     
     elif self.mode == "pwm":
 
