@@ -5,7 +5,7 @@ import RPi.GPIO as GPIO
 class pin(object):
 
 
-  def __init__(self,channel,state=False,mode="pool",pull=None,frequency=None,dutycycle=None,bouncetime=None,eventstatus=None,myfunction=None):
+  def __init__(self,channel,state=False,mode="poll",pull=None,frequency=None,dutycycle=None,bouncetime=None,eventstatus=None,myfunction=None):
 
     """
     channel : pin to manage (1-23)
@@ -36,7 +36,7 @@ class pin(object):
   @property
   def status(self):
 
-    if self.mode=="pool" or self.mode == "in" or self.mode == "out":
+    if self.mode=="poll" or self.mode == "in" or self.mode == "out":
       self._status=GPIO.input(self.channel)
     else:
       self._status=None
@@ -59,8 +59,8 @@ class pin(object):
   @mode.setter
   def mode(self, value):
 
-    if not value in ("in","out","pool"):
-      print "mode can be: ",("in","out","pool")
+    if not value in ("in","out","poll"):
+      print "mode can be: ",("in","out","poll")
     else:
       self.stoppwm()
       self.removeevent()
@@ -152,6 +152,7 @@ class pin(object):
       elif self.pull == "down":
         GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
       else:
+        print "setto pull a off"
         GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
     if self.mode == "out":
@@ -170,6 +171,7 @@ class pin(object):
     elif self.mode == "in":
 
       if self.bouncetime is None or self.bouncetime == 0:
+        print "setto callback"
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent)
       else:
         #manage contact bounce.
@@ -185,24 +187,6 @@ class pin(object):
 
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent,bouncetime=self.bouncetime)
 
-
-  def getstatus(self):
-    if self.mode=="pool" or self.mode == "in" or self.mode == "out":
-      self.status=GPIO.input(self.channel)
-    else:
-      self.status=None
-      
-    return self.status
-
-
-  def setstatus(self,state):
-    if self.mode=="out":
-      GPIO.output(self.channel, state)
-      self.state=state
-    else:
-      self.status=None
-      
-    return self.status
 
 
   def changepwm(self,frequency=None,dutycycle=None):
@@ -267,16 +251,15 @@ class pin(object):
     self.status=status
     if event:
       try:
-        self.myfunction(self)
+        self.myfunction(channel)
       except:
         print "error calling myfunction"
-        pass
 
 def main():
   import time
 
-  def myfunction(pin):
-    print "I get my new pin status : ",pin.channel,pin.status
+  def myfunction(channel):
+    print "I get my new pin status : ",channel
 
 
   # to use Raspberry BCM pin numbers
@@ -284,10 +267,14 @@ def main():
   dutycycle=0.
 
   pin18=pin(channel=18,mode="in",pull="up",bouncetime=200,myfunction=myfunction)
-  pin23=pin(channel=23,mode="pwm",frequency=50.,dutycycle=dutycycle)
+#  pin23=pin(channel=23,mode="pwm",frequency=50.,dutycycle=dutycycle)
 
   while True:
     try:
+      time.sleep(3)
+      print ">",pin18.status
+      continue
+
       print "I am sleeping ..."
       time.sleep(2)
       print "pin 18 status=",pin18.status

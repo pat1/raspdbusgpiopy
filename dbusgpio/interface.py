@@ -43,7 +43,9 @@ class gpio(dbus.service.Object):
 
       if busaddress is None:
         self._bus = dbus.SessionBus()
+        print "connect to session bus"
       else:
+        print "connect to ",busaddress
         self._bus =dbus.bus.BusConnection(busaddress)
 
       dbus.service.Object.__init__(self, self._bus,
@@ -99,7 +101,9 @@ class gpio(dbus.service.Object):
                 pid = None
             logging.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
 
-            self.pin18.delete()
+            for pin in self.pins.iterkeys():
+              self.pins[pin].delete()
+            self.pins={}
 
     def acquire_name(self):
         self._bus_name = dbus.service.BusName(gpio.__name,
@@ -138,7 +142,7 @@ class gpio(dbus.service.Object):
 
     def __setPull(self,pin,pull):
       self.pins[str(pin)].pull=pull
-
+      return None
 
     def __getFrequency(self,pin):
       return dbus.Double(self.pins[str(pin)].frequency)
@@ -257,7 +261,7 @@ class gpio(dbus.service.Object):
 
           logging.debug('Updated property: %s = %s' % (prop, value))
           self.PropertiesChanged(interface, {prop: value}, [])
-          return value
+          #return value
 
             
     @dbus.service.method(__prop_interface,
@@ -287,9 +291,9 @@ class gpio(dbus.service.Object):
         self.PropertiesChanged(interface, {prop: value}, [])
         return value
 
-    def update_property_pin(self):
+    def update_property_pin(self,channel):
 
-        channel_interface=self.__root_interface+".pins.channel"+str(self.pin)
+        channel_interface=self.__root_interface+".pins.channel"+str(channel)
         self.update_property(channel_interface,"Status")
 
 
@@ -299,7 +303,7 @@ class gpio(dbus.service.Object):
 
 
         self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",
-            pull="up",frequency=50.,dutycycle=50.,bouncetime=10,
+            pull=None,frequency=50.,dutycycle=50.,bouncetime=10,
                                           myfunction=self.update_property_pin)
       self.running=True
 

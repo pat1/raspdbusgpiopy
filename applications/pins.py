@@ -48,20 +48,20 @@ print "rpi revision=", properties_manager.Get('org.gpio.myboard', 'RpiRevision')
 
 
 #pin 18 in
-properties_manager.Set('org.gpio.myboard.pins.channel18','Mode',"in")
 properties_manager.Set('org.gpio.myboard.pins.channel18','Pull',"up")
+properties_manager.Set('org.gpio.myboard.pins.channel18','Mode',"in")
 print "18 status=", properties_manager.Get('org.gpio.myboard.pins.channel18','Status')
 
 
 def signal_handler():
     print "signal received"
 
-
-proxy.connect_to_signal("PropertiesChanged", signal_handler, dbus_interface=dbus.PROPERTIES_IFACE, arg0="Hello")
+proxy.connect_to_signal(None, signal_handler, dbus_interface=dbus.PROPERTIES_IFACE, arg0=None)
+#proxy.connect_to_signal("PropertiesChanged", signal_handler, dbus_interface=dbus.PROPERTIES_IFACE, arg0=None)
 
 loop = gobject.MainLoop()
 loop.run()
 
 
 # exit the management daemon
-#board_manager.Quit('org.gpio.myboard')
+board_manager.Quit('org.gpio.myboard')
