@@ -231,7 +231,8 @@ class gpio(dbus.service.Object):
     @dbus.service.signal(__prop_interface, signature="sa{sv}as")
     def PropertiesChanged(self, interface, changed_properties,
                           invalidated_properties):
-        pass
+      print "property changed"
+      #pass
 
     @dbus.service.method(__prop_interface,
                          in_signature="ss", out_signature="v")
@@ -253,6 +254,11 @@ class gpio(dbus.service.Object):
             setter(interface2pin(interface),value)
           else:
             setter(value)
+
+          logging.debug('Updated property: %s = %s' % (prop, value))
+          self.PropertiesChanged(interface, {prop: value}, [])
+          return value
+
             
     @dbus.service.method(__prop_interface,
                          in_signature="s", out_signature="a{sv}")
@@ -281,10 +287,20 @@ class gpio(dbus.service.Object):
         self.PropertiesChanged(interface, {prop: value}, [])
         return value
 
+    def update_property_pin(self):
+
+        channel_interface=self.__root_interface+".pins.channel"+str(self.pin)
+        self.update_property(channel_interface,"Status")
+
+
     @dbus.service.method(IFACE+"."+BOARDNAME)
     def Raise(self):
       for pin in self.pinlist:
-        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",pull=None,frequency=50.,dutycycle=50.,bouncetime=10)
+
+
+        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",
+            pull="up",frequency=50.,dutycycle=50.,bouncetime=10,
+                                          myfunction=self.update_property_pin)
       self.running=True
 
     @dbus.service.method(IFACE+"."+BOARDNAME)

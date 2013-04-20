@@ -36,15 +36,15 @@ print "version=", properties_manager.Get('org.gpio.myboard', 'Version')
 print "rpi revision=", properties_manager.Get('org.gpio.myboard', 'RpiRevision')
 
 
-#pin 18 poll
-properties_manager.Set('org.gpio.myboard.pins.channel18','Mode',"pool")
-print "18 status=", properties_manager.Get('org.gpio.myboard.pins.channel18','Status')
+##pin 18 poll
+#properties_manager.Set('org.gpio.myboard.pins.channel18','Mode',"pool")
+#print "18 status=", properties_manager.Get('org.gpio.myboard.pins.channel18','Status')
 
 #pin 23 out
-properties_manager.Set('org.gpio.myboard.pins.channel23','Mode',"out")
-properties_manager.Set('org.gpio.myboard.pins.channel23','Status',True)
-time.sleep(3)
-properties_manager.Set('org.gpio.myboard.pins.channel23','Status',False)
+#properties_manager.Set('org.gpio.myboard.pins.channel23','Mode',"out")
+#properties_manager.Set('org.gpio.myboard.pins.channel23','Status',True)
+#time.sleep(3)
+#properties_manager.Set('org.gpio.myboard.pins.channel23','Status',False)
 
 
 #pin 18 in

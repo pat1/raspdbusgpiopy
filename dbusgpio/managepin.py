@@ -6,6 +6,7 @@ class pin(object):
 
 
   def __init__(self,channel,state=False,mode="pool",pull=None,frequency=None,dutycycle=None,bouncetime=None,eventstatus=None,myfunction=None):
+
     """
     channel : pin to manage (1-23)
     state : True, False
@@ -25,9 +26,9 @@ class pin(object):
     self._dutycycle=dutycycle
     self._bouncetime=bouncetime
     self.eventstatus=eventstatus
-    self.myfunction=myfunction
     self.rpi_revision=None
     self.version=None
+    self.myfunction=myfunction
     
     self.initialize()
 
@@ -246,7 +247,7 @@ class pin(object):
     #GPIO.cleanup(channel=self.channel)
 
   def manageevent(self,channel):
-    #print "My Event happen! ",channel
+    print "My Event happen! ",channel
     if self.channel != channel:
       print "mmm... somethink is wrong ! channel is not coerent."
       return
@@ -265,7 +266,11 @@ class pin(object):
 
     self.status=status
     if event:
-      self.myfunction(self)
+      try:
+        self.myfunction(self)
+      except:
+        print "error calling myfunction"
+        pass
 
 def main():
   import time
