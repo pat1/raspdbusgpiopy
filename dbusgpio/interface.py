@@ -43,9 +43,9 @@ class gpio(dbus.service.Object):
 
       if busaddress is None:
         self._bus = dbus.SessionBus()
-        print "connect to session bus"
+        logging.debug( "connect to session bus")
       else:
-        print "connect to ",busaddress
+        logging.debug( "connect to ",busaddress)
         self._bus =dbus.bus.BusConnection(busaddress)
 
       dbus.service.Object.__init__(self, self._bus,
@@ -94,12 +94,13 @@ class gpio(dbus.service.Object):
 
 
     def _name_owner_changed_callback(self, name, old_owner, new_owner):
+        logging.debug( "_name_owner_changed_callback")
         if name == self.__name and old_owner == self._uname and new_owner != "":
             try:
                 pid = self._dbus_obj.GetConnectionUnixProcessID(new_owner)
             except:
                 pid = None
-            logging.info("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
+            logging.debug("Replaced by %s (PID %s)" % (new_owner, pid or "unknown"))
 
             for pin in self.pins.iterkeys():
               self.pins[pin].delete()
@@ -235,8 +236,7 @@ class gpio(dbus.service.Object):
     @dbus.service.signal(__prop_interface, signature="sa{sv}as")
     def PropertiesChanged(self, interface, changed_properties,
                           invalidated_properties):
-      print "property changed"
-      #pass
+      logging.debug( "property changed")
 
     @dbus.service.method(__prop_interface,
                          in_signature="ss", out_signature="v")
@@ -279,30 +279,32 @@ class gpio(dbus.service.Object):
         return read_props
 
     def update_property(self, interface, prop):
-        getter, setter = self.__prop_mapping[interface][prop]
-        if callable(getter):
-          if interface.startswith(self.__root_interface+".pins.channel"):
-            value = getter(interface2pin(interface))
-          else:
-            value = getter()
+      logging.debug("update_property")
+      getter, setter = self.__prop_mapping[interface][prop]
+      logging.debug( "getter, setter",getter, setter )
+
+      if callable(getter):
+        if interface.startswith(self.__root_interface+".pins.channel"):
+          value = getter(interface2pin(interface))
         else:
-            value = getter
-        logging.debug('Updated property: %s = %s' % (prop, value))
-        self.PropertiesChanged(interface, {prop: value}, [])
-        return value
+          value = getter()
+      else:
+        value = getter
+      logging.debug('Updated property: %s = %s' % (prop, value))
+      logging.debug( 'Updated property: %s = %s' % (prop, value))
+      self.PropertiesChanged(interface, {prop: value}, [])
+      return value
 
     def update_property_pin(self,channel):
-
-        channel_interface=self.__root_interface+".pins.channel"+str(channel)
-        self.update_property(channel_interface,"Status")
-
+      channel_interface=self.__root_interface+".pins.channel"+str(channel)
+      logging.debug( "update_property_pin : %s" % channel_interface )
+      self.update_property(channel_interface,"Status")
 
     @dbus.service.method(IFACE+"."+BOARDNAME)
     def Raise(self):
       for pin in self.pinlist:
-
-
-        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",
+        logging.debug( "carico in %s funzione: %s" % (pin, str(self.update_property_pin)))
+        self.pins[str(pin)]=managepin.pin(channel=pin,mode="poll",
             pull=None,frequency=50.,dutycycle=50.,bouncetime=10,
                                           myfunction=self.update_property_pin)
       self.running=True

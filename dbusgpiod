@@ -28,7 +28,7 @@ def main ():
 
     # Add the log message handler to the root logger
     logging.getLogger('dbusgpiod').addHandler(handler)
-#    logging.getLogger('').setLevel(logging.DEBUG)
+    logging.getLogger('').setLevel(logging.DEBUG)
     
     logging.info('Starting up dbusgpiod version '+_version_)
 

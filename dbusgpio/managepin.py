@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 import RPi.GPIO as GPIO
+import logging
+
 
 class pin(object):
-
 
   def __init__(self,channel,state=False,mode="poll",pull=None,frequency=None,dutycycle=None,bouncetime=None,eventstatus=None,myfunction=None):
 
@@ -26,9 +27,15 @@ class pin(object):
     self._dutycycle=dutycycle
     self._bouncetime=bouncetime
     self.eventstatus=eventstatus
-    self.rpi_revision=None
-    self.version=None
     self.myfunction=myfunction
+
+    #To discover the Raspberry Pi board revision:
+    logging.debug("GPIO: GPIO.RPI_REVISION")
+    self.rpi_revision=GPIO.RPI_REVISION
+    
+    #To discover the version of RPi.GPIO:
+    logging.debug("GPIO: GPIO.VERSION")
+    self.version=GPIO.VERSION
     
     self.initialize()
 
@@ -37,6 +44,7 @@ class pin(object):
   def status(self):
 
     if self.mode=="poll" or self.mode == "in" or self.mode == "out":
+      logging.debug("GPIO: GPIO.input(%s)" % self.channel)
       self._status=GPIO.input(self.channel)
     else:
       self._status=None
@@ -46,6 +54,7 @@ class pin(object):
   def status(self, value):
 
     if self.mode=="out":
+      logging.debug("GPIO: GPIO.output(%s,%s)" % (self.channel,value))
       GPIO.output(self.channel, value)
       self._state=value
     else:
@@ -58,9 +67,10 @@ class pin(object):
 
   @mode.setter
   def mode(self, value):
+    logging.debug("change properties mode to: %s" % value)
 
     if not value in ("in","out","poll"):
-      print "mode can be: ",("in","out","poll")
+      logging.warning("mode can be: 'in','out','poll'")
     else:
       self.stoppwm()
       self.removeevent()
@@ -74,6 +84,7 @@ class pin(object):
 
   @pull.setter
   def pull(self, value):
+    logging.debug("change properties pull to: %s" % value)
 
     self._pull=value
 
@@ -137,32 +148,33 @@ class pin(object):
 
   def initialize(self):
 
-    #To discover the Raspberry Pi board revision:
-    self.rpi_revision=GPIO.RPI_REVISION
-    
-    #To discover the version of RPi.GPIO:
-    self.version=GPIO.VERSION
-
-
     if self.mode == "poll" or self.mode == "in":
       # set up GPIO output with pull-up control
       #   (pull_up_down be PUD_OFF, PUD_UP or PUD_DOWN, default PUD_OFF)
       if self.pull == "up":
+        logging.debug("GPIO: GPIO.setup(%s,%s,%s)" % (self.channel, GPIO.IN, GPIO.PUD_UP))
         GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
       elif self.pull == "down":
+        logging.debug("GPIO: GPIO.setup(%s,%s,%s)" % (self.channel, GPIO.IN, GPIO.PUD_DOWN))
         GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
       else:
-        print "setto pull a off"
+        logging.debug( "setto pull a off")
+        logging.debug("GPIO: GPIO.setup(%s,%s,%s)" % (self.channel, GPIO.IN, GPIO.PUD_OFF))
         GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
     if self.mode == "out":
+      logging.debug("GPIO: GPIO.setup(%s,%s)" % (self.channel, GPIO.OUT))
       GPIO.setup(self.channel, GPIO.OUT)
+      logging.debug("GPIO: GPIO.output(%s,%s)" % (self.channel, self.status))
       GPIO.output(self.channel, self.status)
     
     elif self.mode == "pwm":
 
+      logging.debug("GPIO: GPIO.setup(%s,%s)" % (self.channel, GPIO.OUT))
       GPIO.setup(self.channel, GPIO.OUT)
+      logging.debug("GPIO: GPIO.PWM(%s,%s)" % (self.channel, self.frequency))
       self.pwm = GPIO.PWM(self.channel, self.frequency)
+      logging.debug("GPIO: start PWM(%s)" % (self.dutycycle))
       self.pwm.start(self.dutycycle)
 
     elif self.mode == "poll":
@@ -171,7 +183,8 @@ class pin(object):
     elif self.mode == "in":
 
       if self.bouncetime is None or self.bouncetime == 0:
-        print "setto callback"
+        logging.debug("setto callback: %s" % self.channel)
+        logging.debug( "GPIO: GPIO.add_event_detect(%s,%s)" % (self.channel, GPIO.BOTH))
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent)
       else:
         #manage contact bounce.
@@ -185,8 +198,9 @@ class pin(object):
         #power circuits, but causes problems in some analogue and logic
         #circuits that respond fast enough to misinterpret the on-off pulses as a data stream.
 
+        logging.debug("setto callback: %s bouncetime: %s" % (self.channel,self.bouncetime))
+        logging.debug("GPIO: GPIO.add_event_detect(%s,%s,%s)" % (self.channel, GPIO.BOTH,str(self.bouncetime)))
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent,bouncetime=self.bouncetime)
-
 
 
   def changepwm(self,frequency=None,dutycycle=None):
@@ -214,6 +228,8 @@ class pin(object):
 
 
   def removeevent(self):
+    logging.debug( "removeevent: %s" % self.channel)
+    logging.debug("GPIO: GPIO.remove_event_detect(%s)" % self.channel)
     GPIO.remove_event_detect(self.channel)
 
 
@@ -225,17 +241,19 @@ class pin(object):
     self.mode="in"
     self.pull=None
 
+    logging.debug("GPIO: GPIO.setup(%s,%s,%s)" % (self.channel, GPIO.IN,GPIO.PUD_OFF))
     GPIO.setup(self.channel, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
     #self.initialize()
     #GPIO.cleanup(channel=self.channel)
 
   def manageevent(self,channel):
-    print "My Event happen! ",channel
+    logging.debug("My Event happen! %s" %channel)
     if self.channel != channel:
-      print "mmm... somethink is wrong ! channel is not coerent."
+      logging.warning( "mmm... somethink is wrong ! channel is not coerent.")
       return
 
+    logging.debug("GPIO: GPIO.input(%s)" % (self.channel))
     status=GPIO.input(channel )
 
     if self.myfunction is not None :
@@ -253,13 +271,13 @@ class pin(object):
       try:
         self.myfunction(channel)
       except:
-        print "error calling myfunction"
+        logging.debug("error calling myfunction")
 
 def main():
   import time
 
   def myfunction(channel):
-    print "I get my new pin status : ",channel
+    logging.debug("I get my new pin status : %s" %channel)
 
 
   # to use Raspberry BCM pin numbers
