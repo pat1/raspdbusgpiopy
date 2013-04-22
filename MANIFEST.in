@@ -3,11 +3,8 @@ include NEWS
 include README
 include TODO
 include *.txt
-include autoradio.spec
-global-include  *.txt *.py *.sh *.in *.cfg *.json
+include dbusgpio.spec
+global-include  *.txt *.py *.sh *.in *.cfg
 recursive-include doc *
-recursive-include locale *.po
-recursive-include templates *
-recursive-include media/sito *
 recursive-include debian *
-prune amarok
+prune man
