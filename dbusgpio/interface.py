@@ -318,8 +318,8 @@ class gpio(dbus.service.Object):
     def Raise(self):
       for pin in self.pinlist:
         logging.debug( "carico in %s funzione: %s" % (pin, str(self.update_property_pin)))
-        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",
-            pull="up",frequency=50.,dutycycle=50.,bouncetime=10,
+        self.pins[str(pin)]=managepin.pin(channel=pin,mode="poll",
+            pull=None,frequency=50.,dutycycle=50.,bouncetime=100,
                                           myfunction=self.update_property_pin)
       self.running=True
 
