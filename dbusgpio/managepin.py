@@ -183,8 +183,8 @@ class pin(object):
     elif self.mode == "in":
 
       if self.bouncetime is None or self.bouncetime == 0:
-        logging.debug("setto callback: %s" % self.channel)
-        logging.debug( "GPIO: GPIO.add_event_detect(%s,%s)" % (self.channel, GPIO.BOTH))
+        logging.info("set callback: %s" % self.channel)
+        logging.info( "GPIO: GPIO.add_event_detect(%s,%s)" % (self.channel, GPIO.BOTH))
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent)
       else:
         #manage contact bounce.
@@ -198,8 +198,8 @@ class pin(object):
         #power circuits, but causes problems in some analogue and logic
         #circuits that respond fast enough to misinterpret the on-off pulses as a data stream.
 
-        logging.debug("setto callback: %s bouncetime: %s" % (self.channel,self.bouncetime))
-        logging.debug("GPIO: GPIO.add_event_detect(%s,%s,%s)" % (self.channel, GPIO.BOTH,str(self.bouncetime)))
+        logging.info("set callback: %s bouncetime: %s" % (self.channel,self.bouncetime))
+        logging.info("GPIO: GPIO.add_event_detect(%s,%s,%s)" % (self.channel, GPIO.BOTH,str(self.bouncetime)))
         GPIO.add_event_detect(self.channel, GPIO.BOTH, callback=self.manageevent,bouncetime=self.bouncetime)
 
 
@@ -269,15 +269,16 @@ class pin(object):
     self.status=status
     if event:
       try:
-        self.myfunction(channel)
+        self.myfunction(channel,self)
       except:
         logging.debug("error calling myfunction")
 
 def main():
   import time
 
-  def myfunction(channel):
-    logging.debug("I get my new pin status : %s" %channel)
+  def myfunction(channel,pin):
+    logging.info("I get my new pin status : %s = %d" %(channel,pin.status))
+    print "I get my new pin status : %s = %d" %(channel,pin.status)
 
 
   # to use Raspberry BCM pin numbers
@@ -290,7 +291,7 @@ def main():
   while True:
     try:
       time.sleep(3)
-      print ">",pin18.status
+      #print ">",pin18.status
       continue
 
       print "I am sleeping ..."

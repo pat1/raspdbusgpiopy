@@ -53,15 +53,31 @@ properties_manager.Set('org.gpio.myboard.pins.channel18','Mode',"in")
 print "18 status=", properties_manager.Get('org.gpio.myboard.pins.channel18','Status')
 
 
-def signal_handler():
+
+def signal_handler(interface,properties,arg0):
     print "signal received"
+    print "interface=",interface
+    for prop in properties.keys():
+        print prop, properties[prop]
+    #print arg0
 
-proxy.connect_to_signal(None, signal_handler, dbus_interface=dbus.PROPERTIES_IFACE, arg0=None)
+bus.add_signal_receiver(signal_handler, dbus_interface = dbus.PROPERTIES_IFACE, signal_name = "PropertiesChanged")
+
+
+#def signal_handler_all(arg1,arg2,arg3,dbus_interface,member):
+#    print "signal received"
+#    print arg1,arg2,arg3,dbus_interface,member
+#
 #proxy.connect_to_signal("PropertiesChanged", signal_handler, dbus_interface=dbus.PROPERTIES_IFACE, arg0=None)
+#lets make a catchall
+#bus.add_signal_receiver(signal_handler_all, interface_keyword='dbus_interface', member_keyword='member')
+#bus.add_signal_receiver(catchall_testservice_interface_handler, dbus_interface = "com.example.TestService", message_keyword='dbus_message')
 
-loop = gobject.MainLoop()
-loop.run()
 
+try:  
+    loop = gobject.MainLoop()
+    loop.run()
 
-# exit the management daemon
-board_manager.Quit('org.gpio.myboard')
+except KeyboardInterrupt :
+    # exit the management daemon
+    board_manager.Quit('org.gpio.myboard')

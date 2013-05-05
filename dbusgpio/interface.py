@@ -237,6 +237,7 @@ class gpio(dbus.service.Object):
     def PropertiesChanged(self, interface, changed_properties,
                           invalidated_properties):
       logging.debug( "property changed")
+      print interface, changed_properties,invalidated_properties
 
     @dbus.service.method(__prop_interface,
                          in_signature="ss", out_signature="v")
@@ -291,11 +292,10 @@ class gpio(dbus.service.Object):
       else:
         value = getter
       logging.debug('Updated property: %s = %s' % (prop, value))
-      logging.debug( 'Updated property: %s = %s' % (prop, value))
       self.PropertiesChanged(interface, {prop: value}, [])
       return value
 
-    def update_property_pin(self,channel):
+    def update_property_pin(self,channel,pin):
       channel_interface=self.__root_interface+".pins.channel"+str(channel)
       logging.debug( "update_property_pin : %s" % channel_interface )
       self.update_property(channel_interface,"Status")
@@ -304,8 +304,8 @@ class gpio(dbus.service.Object):
     def Raise(self):
       for pin in self.pinlist:
         logging.debug( "carico in %s funzione: %s" % (pin, str(self.update_property_pin)))
-        self.pins[str(pin)]=managepin.pin(channel=pin,mode="poll",
-            pull=None,frequency=50.,dutycycle=50.,bouncetime=10,
+        self.pins[str(pin)]=managepin.pin(channel=pin,mode="in",
+            pull="up",frequency=50.,dutycycle=50.,bouncetime=10,
                                           myfunction=self.update_property_pin)
       self.running=True
 
@@ -322,6 +322,17 @@ class gpio(dbus.service.Object):
     def handle_sigint(self,signum, frame):
       logging.debug('Caught SIGINT, exiting.')
       self.Quit()
+
+    def falsesignal(self):
+
+      print "try to send emulated software signal"
+      try:
+        self.update_property_pin(18,None)
+        print "false signal sended"
+      except:
+        print "error sending false signal"
+      finally:
+        return True
 
 
 def main(pinlist=(18,),busaddress=None):  
@@ -341,6 +352,8 @@ def main(pinlist=(18,),busaddress=None):
 #    pass
 
 
+  gobject.threads_init()
+
   try:  
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     loop = gobject.MainLoop()
@@ -357,6 +370,9 @@ def main(pinlist=(18,),busaddress=None):
     gp = gpio(pinlist=pinlist,busaddress=busaddress,loop=loop)
 
     signal.signal(signal.SIGINT, gp.handle_sigint)
+
+    #gp.Raise()
+    #gobject.timeout_add(5000,gp.falsesignal)
 
     loop.run()
 
