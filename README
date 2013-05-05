@@ -1,0 +1,143 @@
+Raspdbusgpiopy provide a GPIO access throw DBUS
+
+What is D-Bus?
+D-Bus is a message bus system, a simple way for applications to talk
+to one another. In addition to interprocess communication, D-Bus helps
+coordinate process lifecycle; it makes it simple and reliable to code
+a "single instance" application or daemon, and to launch applications
+and daemons on demand when their services are needed.
+
+What is GPIO?
+General Purpose Input/Output (GPIO) is a generic pin on a chip whose
+behavior (including whether it is an input or output pin) can be
+controlled (programmed) by the user at run time.
+
+Raspdbusgpiopy use raspberry-gpio-python that provides a class to
+control the GPIO on a Raspberry Pi
+http://code.google.com/p/raspberry-gpio-python/
+
+There are two standard message bus instances: the systemwide message
+bus (installed on many systems as the "messagebus" init service) and
+the per-user-login-session message bus (started each time a user logs
+in). dbus-daemon is used for both of these instances, but with a
+different configuration file.
+
+The systemwide daemon is normally launched by an init script,
+standardly called simply "messagebus".
+
+The systemwide daemon is largely used for broadcasting system events,
+such as changes to the printer queue, or adding/removing devices.
+
+The per-session daemon is used for various interprocess communication
+among desktop applications (however, it is not tied to X or the GUI in
+any way).
+
+Raspdbusgpiopy use session dbus as default but you can change it using
+configuration files.
+
+To start the dbus interface to GPIO use ./dbusgpiod run
+Usage: dbusgpiod <action> [options] (action=start|stop|restart|run|version)
+the action start daemonize the program.
+
+The bus name provided is org.gpio.myboard.Pins; the interface org.gpio.myboard
+provide two methods:
+Raise: start the management of pins
+Quit: quit the daemon
+
+Other interfaces are created, one for each pin named:
+org.gpio.myboard.pins.channel<pinnumber>
+The pins managed are defined in configuration files.
+
+Pin numbering:there are two ways of numbering the IO pins on a
+Raspberry Pi within RPi.GPIO. The one used here is the BOARD numbering
+system. This refers to the pin numbers on the P1 header of the
+Raspberry Pi board. The advantage of using this numbering system is
+that your hardware will always work, regardless of the board revision
+of the RPi
+
+Those interfaces provide properties only:
+Status:       	 State can be 0/1
+
+Dutycycle:       (0-100) The term duty cycle describes the proportion of 'on' time
+		 to the regular interval or 'period' of time; a low
+		 duty cycle corresponds to low power, because the
+		 power is off for most of the time. Duty cycle is
+		 expressed in percent, 100% being fully on.
+
+Frequency:	 PWM frequency
+
+Bouncetime:      if > 0 debounce using software; bouncetime should be 
+		 specified in milliseconds
+
+Mode:            ("poll"/"in"/"out") There are several ways of getting GPIO input
+      		 into your program. The first and simplest way is to
+      		 check the input value at a point in time. This is
+      		 known as 'polling' and can potentially miss an input
+      		 if your program reads the value at the wrong
+      		 time. Polling is performed in loops and can
+      		 potentially be processor intensive. The other way of
+      		 responding to a GPIO input is using 'interrupts'
+      		 (edge detection). Output is for setting output state.
+
+Pull:            ("up"/"down"/None) Pull up / Pull down resistors. If you do not
+		 have the input pin connected to anything, it will
+		 'float'. In other words, the value that is read in is
+		 undefined because it is not connected to anything
+		 until you press a button or switch. It will probably
+		 change value a lot as a result of receiving mains
+		 interference. To get round this, we use a pull up or
+		 a pull down resistor. In this way, the default value
+		 of the input can be set. It is possible to have pull
+		 up/down resistors in hardware and using software. In
+		 hardware, a 10K resistor between the input channel
+		 and 3.3V (pull-up) or 0V (pull-down) is commonly
+		 used. The RPi.GPIO module allows you to configure the
+		 Broadcom SOC to do this in software
+
+Configuration files
+There are two configuration files searched in this order:
+system wide: located at /etc/dbusgpio/dbusgpio-site.cfg
+local directory: dbusgpio.cfg
+The last definition overwrite the previous.
+
+In the configuration file you can have two sections:
+
+[dbusgpiod]  : definition for dbusgpio daemon
+
+user:  user to run in daemon mode
+group: group to run in daemon mode
+
+logfile : log file path
+errfile : error file path
+lockfile: lockfile path
+
+busaddress:     address that the dbus-daemon should listen on. The
+ 	        address is in the standard D-Bus format that contains
+ 	        a transport name plus possible parameters/options.
+ 	        Example: unix:path=/tmp/foo
+ 	        Example: tcp:host=localhost,port=1234
+
+pinlist:        list of pins to provide a dbus interface
+
+[dbusd]:  definitions for dbus daemon
+
+user:  user to run in daemon mode
+group: group to run in daemon mode
+
+logfile : log file path
+errfile : error file path
+lockfile: lockfile path
+
+
+This second session is used by dbusd daemon; this daemon is used to provide
+an additional bus with a specific configuration file dbus-gpio.conf located 
+in local directory or system wide (/etc/dbusgpio). This configuration is quite
+different fron standard session and system dbus configuration and allow to
+communicate over tcp/ip. So you can use this daemon to contro you your SBus
+GPIO over network.
+
+Sample Applications
+In directory applications you can find some example to write
+application to use dbusgpio. poweroff.py is an example to define a
+simple poweroff button that need in hardware only a switch from pin 18
+and ground.
