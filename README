@@ -79,7 +79,7 @@ Mode:            ("poll"/"in"/"out") There are several ways of getting GPIO inpu
       		 responding to a GPIO input is using 'interrupts'
       		 (edge detection). Output is for setting output state.
 
-Pull:            ("up"/"down"/None) Pull up / Pull down resistors. If you do not
+Pull:            ("up"/"down"/"float") Pull up / Pull down resistors. If you do not
 		 have the input pin connected to anything, it will
 		 'float'. In other words, the value that is read in is
 		 undefined because it is not connected to anything

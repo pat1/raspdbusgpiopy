@@ -153,11 +153,17 @@ class gpio(dbus.service.Object):
       self.pins[str(pin)].status=status
 
     def __getPull(self,pin):
-      return str(self.pins[str(pin)].pull)
+      pull=self.pins[str(pin)].pull
+      if pull is None :
+        return "float"
+      else:
+        return str(pull)
 
     def __setPull(self,pin,pull):
-      self.pins[str(pin)].pull=pull
-      return None
+      if pull == "float":
+        self.pins[str(pin)].pull=None
+      else:
+        self.pins[str(pin)].pull=pull
 
     def __getFrequency(self,pin):
       return dbus.Double(self.pins[str(pin)].frequency)
@@ -174,7 +180,7 @@ class gpio(dbus.service.Object):
     def __getBouncetime(self,pin):
       return dbus.Int64(self.pins[str(pin)].bouncetime)
 
-    def __setBouncetime(self,pin,status):
+    def __setBouncetime(self,pin,bouncetime):
       self.pins[str(pin)].bouncetime=bouncetime
 
 
