@@ -55,9 +55,12 @@ class gpio(dbus.service.Object):
       self.pinlist=pinlist
       self.running=False
 
-      if busaddress is None:
+      if busaddress is None or busaddress == "sessionbus":
         self._bus = dbus.SessionBus()
         logging.debug( "connect to session bus")
+      elif busaddress == "systembus":
+        self._bus = dbus.SystemBus()
+        logging.debug( "connect to system bus")
       else:
         logging.debug( "connect to ",busaddress)
         self._bus =dbus.bus.BusConnection(busaddress)
