@@ -4,7 +4,7 @@ include README
 include TODO
 include *.txt
 include dbusgpio.spec
-global-include  *.txt *.py *.sh *.in *.cfg
+global-include  *.txt *.py *.sh *.in *.cfg *.conf
 recursive-include doc *
 recursive-include debian *
 prune man
